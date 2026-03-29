@@ -344,7 +344,7 @@ class ProjectService {
     columnId: string,
     data: GetColumnTasksDto,
   ) {
-    const { cursor, limit = 20, statuses = [TaskStatus.ACTIVE] } = data;
+    const { cursor, limit = 20, statuses = [TaskStatus.ACTIVE], search } = data;
 
     if (!Types.ObjectId.isValid(projectId)) {
       throw new BadRequestException('Invalid project id');
@@ -354,9 +354,12 @@ class ProjectService {
       throw new BadRequestException('Invalid column id');
     }
 
+    const projectObjectId = new Types.ObjectId(projectId);
+    const columnObjectId = new Types.ObjectId(columnId);
+
     const columnExists = await this.projectColumnModel.exists({
-      _id: new Types.ObjectId(columnId),
-      projectId: new Types.ObjectId(projectId),
+      _id: columnObjectId,
+      projectId: projectObjectId,
       deletedAt: null,
     });
 
@@ -364,9 +367,9 @@ class ProjectService {
       throw new NotFoundException('Column not found');
     }
 
-    const query: any = {
-      projectId: new Types.ObjectId(projectId),
-      columnId: new Types.ObjectId(columnId),
+    const matchStage: Record<string, any> = {
+      projectId: projectObjectId,
+      columnId: columnObjectId,
       deletedAt: null,
       status: { $in: statuses },
     };
@@ -384,7 +387,7 @@ class ProjectService {
         throw new BadRequestException('Invalid cursor');
       }
 
-      query.$or = [
+      matchStage.$or = [
         { order: { $gt: lastOrder } },
         {
           order: lastOrder,
@@ -393,12 +396,74 @@ class ProjectService {
       ];
     }
 
-    const tasks = await this.projectTaskModel
-      .find(query)
-      .sort({ order: 1, _id: 1 })
-      .limit(limit + 1)
-      .populate('assignees', 'fullName email avatar')
-      .lean();
+    const pipeline: any[] = [
+      {
+        $match: matchStage,
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'assigneeIds',
+          foreignField: '_id',
+          as: 'assignees',
+        },
+      },
+    ];
+
+    if (search?.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+
+      pipeline.push({
+        $match: {
+          $or: [
+            { title: { $regex: searchRegex } },
+            { description: { $regex: searchRegex } },
+            { labels: { $elemMatch: { $regex: searchRegex } } },
+            { 'assignees.fullName': { $regex: searchRegex } },
+          ],
+        },
+      });
+    }
+
+    pipeline.push(
+      {
+        $sort: { order: 1, _id: 1 },
+      },
+      {
+        $limit: limit + 1,
+      },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          labels: 1,
+          assigneeIds: 1,
+          deadline: 1,
+          parentTaskId: 1,
+          location: 1,
+          order: 1,
+          status: 1,
+          columnId: 1,
+          projectId: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          assignees: {
+            $map: {
+              input: '$assignees',
+              as: 'assignee',
+              in: {
+                _id: '$$assignee._id',
+                fullName: '$$assignee.fullName',
+                email: '$$assignee.email',
+                avatar: '$$assignee.avatar',
+              },
+            },
+          },
+        },
+      },
+    );
+
+    const tasks = await this.projectTaskModel.aggregate(pipeline);
 
     const hasMore = tasks.length > limit;
     const items = hasMore ? tasks.slice(0, limit) : tasks;
