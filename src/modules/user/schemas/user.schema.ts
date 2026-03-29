@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { ProjectColumnSchema } from '../../project/schemas/project-column.schema';
 
 @Schema({ timestamps: true })
 export class User {

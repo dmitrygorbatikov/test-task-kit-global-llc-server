@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { ClientSession, Model, Types } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import {
   DefaultColumns,
   Project,
@@ -33,7 +33,6 @@ import { AddProjectColumnDto } from './dto/add-project-column.dto';
 import { AddProjectTaskDto } from './dto/add-project-task.dto';
 import { FilterMembersDto } from './dto/filter-members.dto';
 import { UserService } from '../user/user.service';
-import { CursorPaginationDto } from '../../infrastracture/dto/cursor-pagination.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { GetColumnTasksDto } from './dto/get-column-tasks.dto';
 import { ChangeTaskStatusDto } from './dto/change-task-status.dto';

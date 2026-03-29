@@ -49,16 +49,4 @@ export class UserService {
       { session },
     );
   }
-
-  async findById(id: string): Promise<User | null> {
-    return this.user.findById(id);
-  }
-
-  async findAll(): Promise<User[]> {
-    return this.user.find();
-  }
-
-  async delete(id: string) {
-    return this.user.findByIdAndDelete(id);
-  }
 }
