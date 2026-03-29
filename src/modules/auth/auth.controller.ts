@@ -66,7 +66,7 @@ export class AuthController {
 
   @Post('logout')
   @ApiOperation({ summary: 'Logout user' })
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOkResponse({
     description: 'User successfully logged out',
     schema: {

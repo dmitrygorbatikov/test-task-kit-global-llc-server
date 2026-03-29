@@ -59,7 +59,7 @@ import { SuccessMessageResponseDto } from './responses/success-message-response.
 import { ProjectMemberResponseDto } from './responses/project-member-response.dto';
 
 @ApiTags('Project')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiForbiddenResponse({ description: 'Forbidden' })
 @Controller('project')
