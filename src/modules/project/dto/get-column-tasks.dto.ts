@@ -1,9 +1,18 @@
 import { Transform } from 'class-transformer';
 import { IsArray, IsEnum, IsOptional } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { CursorPaginationDto } from '../../../infrastracture/dto/cursor-pagination.dto';
 import { TaskStatus } from '../schemas/project-task.schema';
 
 export class GetColumnTasksDto extends CursorPaginationDto {
+  @ApiPropertyOptional({
+    example: ['ACTIVE', 'DONE'],
+    description:
+      'Filter tasks by statuses. Can be passed as array or comma-separated string (e.g. ACTIVE,DONE). Defaults to [ACTIVE]',
+    enum: TaskStatus,
+    isArray: true,
+    default: [TaskStatus.ACTIVE],
+  })
   @IsOptional()
   @Transform(({ value }) => {
     if (!value) {
