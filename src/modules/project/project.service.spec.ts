@@ -85,6 +85,11 @@ describe('ProjectService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
+    sessionMock.startTransaction.mockClear();
+    sessionMock.commitTransaction.mockClear();
+    sessionMock.abortTransaction.mockClear();
+    sessionMock.endSession.mockClear();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProjectService,
@@ -157,34 +162,38 @@ describe('ProjectService', () => {
 
       const result = await service.createProject(dto as any, userId);
 
-      expect(projectModelMock.findOne).toHaveBeenCalledWith({
-        title: dto.title,
-        ownerId: userId,
-      });
+      expect(projectModelMock.findOne).toHaveBeenCalledTimes(1);
+      const findOneArg = projectModelMock.findOne.mock.calls[0][0];
+      expect(findOneArg.title).toBe(dto.title);
+      expect(findOneArg.ownerId).toBeInstanceOf(Types.ObjectId);
+      expect(findOneArg.ownerId.toString()).toBe(userId);
 
       expect(sessionMock.startTransaction).toHaveBeenCalled();
 
-      expect(projectModelMock.create).toHaveBeenCalledWith(
-        [
-          {
-            title: dto.title,
-            description: dto.description,
-            ownerId: expect.any(Types.ObjectId),
-          },
-        ],
-        { session: sessionMock },
-      );
+      expect(projectModelMock.create).toHaveBeenCalledTimes(1);
+      const projectCreateDocs = projectModelMock.create.mock.calls[0][0];
+      const projectCreateOptions = projectModelMock.create.mock.calls[0][1];
 
-      expect(projectMemberModelMock.create).toHaveBeenCalledWith(
-        [
-          {
-            projectId: newProjectId,
-            userId: expect.any(Types.ObjectId),
-            role: ProjectRole.OWNER,
-          },
-        ],
-        { session: sessionMock },
+      expect(projectCreateDocs).toHaveLength(1);
+      expect(projectCreateDocs[0].title).toBe(dto.title);
+      expect(projectCreateDocs[0].description).toBe(dto.description);
+      expect(projectCreateDocs[0].ownerId).toBeInstanceOf(Types.ObjectId);
+      expect(projectCreateDocs[0].ownerId.toString()).toBe(userId);
+      expect(projectCreateOptions).toEqual({ session: sessionMock });
+
+      expect(projectMemberModelMock.create).toHaveBeenCalledTimes(1);
+      const memberCreateDocs = projectMemberModelMock.create.mock.calls[0][0];
+      const memberCreateOptions =
+        projectMemberModelMock.create.mock.calls[0][1];
+
+      expect(memberCreateDocs).toHaveLength(1);
+      expect(memberCreateDocs[0].projectId.toString()).toBe(
+        newProjectId.toString(),
       );
+      expect(memberCreateDocs[0].userId).toBeInstanceOf(Types.ObjectId);
+      expect(memberCreateDocs[0].userId.toString()).toBe(userId);
+      expect(memberCreateDocs[0].role).toBe(ProjectRole.OWNER);
+      expect(memberCreateOptions).toEqual({ session: sessionMock });
 
       expect(projectColumnModelMock.insertMany).toHaveBeenCalledWith(
         [
@@ -200,6 +209,10 @@ describe('ProjectService', () => {
         ],
         { session: sessionMock },
       );
+
+      expect(projectModelMock.findById).toHaveBeenCalledTimes(1);
+      const findByIdArg = projectModelMock.findById.mock.calls[0][0];
+      expect(findByIdArg.toString()).toBe(newProjectId.toString());
 
       expect(sessionMock.commitTransaction).toHaveBeenCalled();
       expect(sessionMock.endSession).toHaveBeenCalled();
@@ -317,7 +330,7 @@ describe('ProjectService', () => {
         .mockResolvedValueOnce({
           _id: new Types.ObjectId(columnId),
           projectId: new Types.ObjectId(projectId),
-          equals: function (id: Types.ObjectId) {
+          equals(this: { _id: Types.ObjectId }, id: Types.ObjectId) {
             return this._id.equals(id);
           },
         })
@@ -392,7 +405,7 @@ describe('ProjectService', () => {
       projectColumnModelMock.findOne
         .mockResolvedValueOnce({
           _id: new Types.ObjectId(),
-          equals: function (id: Types.ObjectId) {
+          equals(this: { _id: Types.ObjectId }, id: Types.ObjectId) {
             return this._id.equals(id);
           },
         })
@@ -417,7 +430,7 @@ describe('ProjectService', () => {
         .mockResolvedValueOnce({
           _id: sameId,
           projectId: new Types.ObjectId(),
-          equals: function (id: Types.ObjectId) {
+          equals(this: { _id: Types.ObjectId }, id: Types.ObjectId) {
             return this._id.equals(id);
           },
         })

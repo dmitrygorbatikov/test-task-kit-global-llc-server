@@ -122,7 +122,7 @@ class ProjectService {
         },
         {
           $sort: {
-            createdAt: -1,
+            updatedAt: -1,
           },
         },
         {
@@ -487,7 +487,7 @@ class ProjectService {
   async createProject(dto: CreateProjectDto, userId: string) {
     const existingProject = await this.projectModel.findOne({
       title: dto.title,
-      ownerId: userId,
+      ownerId: new Types.ObjectId(userId),
     });
 
     if (existingProject) {
